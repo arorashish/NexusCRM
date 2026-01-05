@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus CRM | Client Management Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .view-transition {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .tab-active {
+            background-color: #eef2ff;
+            color: #4f46e5;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
+
+    <div id="app" class="flex h-screen w-full">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
+            <div class="p-6 flex items-center gap-3">
+                <div class="bg-indigo-600 p-2 rounded-xl">
+                    <i data-lucide="shield-check" class="text-white w-6 h-6"></i>
+                </div>
+                <h1 class="text-xl font-extrabold tracking-tight text-slate-800 italic">NEXUS</h1>
+            </div>
+
+            <nav class="flex-1 px-4 py-4 space-y-1">
+                <button onclick="router.navigate('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+                </button>
+                <button onclick="router.navigate('directory')" id="nav-directory" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
+                    <i data-lucide="users" class="w-5 h-5"></i> Client Directory
+                </button>
+                <button onclick="router.navigate('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-900">
+                    <i data-lucide="database" class="w-5 h-5"></i> Demo Settings
+                </button>
+            </nav>
+
+            <div class="p-6 border-t border-slate-100">
+                <div class="bg-slate-50 rounded-2xl p-4">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Demo Mode</p>
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                        <p class="text-xs font-bold text-slate-700">Offline Session</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden relative">
+            <!-- Header -->
+            <header class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 flex items-center justify-between z-10">
+                <div class="relative w-96">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                    <input 
+                        type="text" 
+                        id="globalSearch"
+                        oninput="ui.handleSearch(this.value)"
+                        class="w-full bg-slate-100 border-none rounded-full pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                        placeholder="Search clients by name, email, PAN..."
+                    >
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="ui.toggleModal('addClientModal', true)" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
+                        <i data-lucide="plus" class="w-5 h-5"></i> Add New Client
+                    </button>
+                </div>
+            </header>
+
+            <!-- Scrollable Viewport -->
+            <main id="viewport" class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <!-- Content injected here via router -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="addClientModal" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm hidden animate-in fade-in duration-300">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl">
+            <div class="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 tracking-tight">Onboard New Client</h2>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Direct Registration</p>
+                </div>
+                <button onclick="ui.toggleModal('addClientModal', false)" class="p-3 text-slate-300 hover:text-slate-800 hover:bg-white rounded-2xl transition-all">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <form id="addClientForm" onsubmit="ui.submitNewClient(event)" class="p-10 grid grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div class="col-span-2 space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+                    <input name="name" required type="text" placeholder="e.g. Vikram Singh" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 ring-indigo-500 outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                    <input name="email" required type="email" placeholder="vikram@corp.com" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 ring-indigo-500 outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                    <input name="phone" required type="text" placeholder="+91 98XXX XXXXX" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 ring-indigo-500 outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">PAN Number</label>
+                    <input name="pan" required type="text" placeholder="ABCDE1234F" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 ring-indigo-500 outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">City</label>
+                    <input name="city" required type="text" placeholder="Mumbai" class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 ring-indigo-500 outline-none">
+                </div>
+                <div class="col-span-2 flex justify-end gap-4 pt-6">
+                    <button type="button" onclick="ui.toggleModal('addClientModal', false)" class="px-8 py-3 text-xs font-black text-slate-400 hover:text-slate-800 uppercase tracking-widest">Discard</button>
+                    <button type="submit" class="bg-indigo-600 text-white px-10 py-3 rounded-2xl text-xs font-black shadow-2xl shadow-indigo-200 hover:bg-indigo-700 transition-all uppercase tracking-widest">Register Client</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-8 right-8 z-[100] transform translate-y-20 transition-transform duration-300 pointer-events-none">
+        <div class="bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3">
+            <i data-lucide="check-circle" class="text-emerald-400 w-5 h-5"></i>
+            <span id="toastMessage" class="text-sm font-bold">Action successful</span>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            clients: [],
+            activeTab: 'dashboard',
+            searchQuery: '',
+            selectedClientId: null,
+            viewingTab: 'overview' // internal tab for client detail
+        };
+
+        // --- Router ---
+        const router = {
+            navigate(view, clientId = null) {
+                state.activeTab = view;
+                state.selectedClientId = clientId;
+                
+                // Update Sidebar UI
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('tab-active'));
+                const activeNav = document.getElementById(`nav-${view}`);
+                if (activeNav) activeNav.classList.add('tab-active');
+
+                this.render();
+            },
+            render() {
+                const viewport = document.getElementById('viewport');
+                viewport.innerHTML = '';
+                
+                if (state.selectedClientId) {
+                    viewport.appendChild(views.clientDetail(state.selectedClientId));
+                } else {
+                    switch(state.activeTab) {
+                        case 'dashboard': viewport.appendChild(views.dashboard()); break;
+                        case 'directory': viewport.appendChild(views.directory()); break;
+                        case 'settings': viewport.appendChild(views.settings()); break;
+                    }
+                }
+                lucide.createIcons();
+            }
+        };
+
+        // --- Views ---
+        const views = {
+            dashboard() {
+                const div = document.createElement('div');
+                div.className = 'space-y-8 animate-in fade-in duration-500';
+                
+                const stats = {
+                    total: state.clients.length,
+                    active: state.clients.filter(c => c.status === 'Active').length,
+                    revenue: state.clients.reduce((acc, c) => acc + (Number(c.billingAmount) || 0), 0),
+                    upcoming: state.clients.filter(c => c.nextMeeting && new Date(c.nextMeeting) >= new Date()).length
+                };
+
+                div.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        ${this.statCard('Total Portfolio', stats.total, 'Clients on record', 'users', 'text-blue-500')}
+                        ${this.statCard('Active Status', stats.active, 'Engaged accounts', 'check-circle', 'text-emerald-500')}
+                        ${this.statCard('Est. ARR', '₹' + (stats.revenue/100000).toFixed(1) + 'L', 'Revenue projection', 'credit-card', 'text-amber-500')}
+                        ${this.statCard('Engagements', stats.upcoming, 'Next 30 days', 'calendar', 'text-purple-500')}
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 bg-white rounded-[2rem] border border-slate-200 p-8 shadow-sm">
+                            <h3 class="font-black text-xl text-slate-800 mb-8">Recently Active</h3>
+                            <div class="space-y-2">
+                                ${state.clients.slice(0, 5).map(c => `
+                                    <div onclick="router.navigate('directory', '${c.id}')" class="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer group border border-transparent hover:border-slate-100">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-sm font-black text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all">${c.name.charAt(0)}</div>
+                                            <div>
+                                                <p class="text-sm font-black text-slate-800">${c.name}</p>
+                                                <p class="text-xs text-slate-400 font-medium">${c.city || 'Standard Portfolio'}</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Billing Value</p>
+                                            <span class="text-sm font-bold text-slate-700">₹${(c.billingAmount || 0).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                `).join('') || '<p class="text-center py-10 text-slate-400 font-bold uppercase tracking-widest text-xs">No records available. Go to Settings to seed data.</p>'}
+                            </div>
+                        </div>
+                        <div class="bg-indigo-600 rounded-[2.5rem] p-10 text-white flex flex-col justify-between shadow-2xl shadow-indigo-200 overflow-hidden relative">
+                             <div class="z-10">
+                                <h4 class="text-indigo-100 font-black text-xs mb-1 uppercase tracking-widest">Growth Engine</h4>
+                                <p class="text-3xl font-black leading-tight">Retention Insights</p>
+                             </div>
+                             <div class="space-y-4 z-10 mt-8">
+                                <div class="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/10">
+                                   <p class="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mb-1">Portfolio Health</p>
+                                   <p class="text-2xl font-black">94% Stable</p>
+                                </div>
+                                <div class="bg-indigo-500/50 p-5 rounded-2xl border border-white/5">
+                                   <p class="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mb-1">Risk Factor</p>
+                                   <p class="text-2xl font-black">Minimal</p>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+                `;
+                return div;
+            },
+            statCard(label, value, sub, icon, color) {
+                return `
+                    <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-start gap-4 hover:border-indigo-400 transition-all group">
+                        <div class="p-4 bg-slate-50 rounded-2xl group-hover:bg-indigo-50 transition-all">
+                            <i data-lucide="${icon}" class="${color} w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">${label}</p>
+                            <h3 class="text-2xl font-black text-slate-800 tracking-tight">${value}</h3>
+                            <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase">${sub}</p>
+                        </div>
+                    </div>
+                `;
+            },
+            directory() {
+                const div = document.createElement('div');
+                div.className = 'bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm animate-in slide-in-from-bottom-4 duration-500';
+                
+                const query = state.searchQuery.toLowerCase();
+                const filtered = state.clients.filter(c => 
+                    c.name.toLowerCase().includes(query) || 
+                    c.email.toLowerCase().includes(query) || 
+                    (c.pan && c.pan.toLowerCase().includes(query))
+                );
+
+                div.innerHTML = `
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b">
+                            <tr>
+                                <th class="px-8 py-5">Client Profile</th>
+                                <th class="px-8 py-5">Compliance</th>
+                                <th class="px-8 py-5">Annual Value</th>
+                                <th class="px-8 py-5">Review Cycle</th>
+                                <th class="px-8 py-5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y text-sm">
+                            ${filtered.map(c => `
+                                <tr onclick="router.navigate('directory', '${c.id}')" class="hover:bg-indigo-50/20 transition-all cursor-pointer group">
+                                    <td class="px-8 py-5">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all">${c.name.charAt(0)}</div>
+                                            <div>
+                                                <p class="font-black text-slate-800">${c.name}</p>
+                                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">${c.email}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-5">
+                                        <div class="flex gap-3">
+                                            <div class="w-1 h-8 rounded-full ${c.pan ? 'bg-indigo-500' : 'bg-slate-200'}"></div>
+                                            <div>
+                                                <p class="text-xs font-black text-slate-700 uppercase tracking-tighter">Verified KYC</p>
+                                                <p class="text-[10px] text-slate-400 font-bold">${c.pan ? 'PAN: ' + c.pan : 'Pending'}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-5">
+                                        <p class="font-black text-slate-800">₹${(c.billingAmount || 0).toLocaleString()}</p>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Gross Annual</p>
+                                    </td>
+                                    <td class="px-8 py-5">
+                                        <div class="flex items-center gap-2">
+                                            <i data-lucide="calendar" class="w-3 h-3 text-slate-300"></i>
+                                            <p class="text-xs font-bold text-slate-600">${c.nextMeeting || 'TBD'}</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-8 py-5 text-right">
+                                        <button class="p-2.5 rounded-xl text-slate-300 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-100 transition-all">
+                                            <i data-lucide="external-link" class="w-4 h-4"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('') || `<tr><td colspan="5" class="py-32 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">No client records found matching "${query}"</td></tr>`}
+                        </tbody>
+                    </table>
+                `;
+                return div;
+            },
+            clientDetail(id) {
+                const client = state.clients.find(c => c.id === id);
+                if (!client) return this.directory();
+
+                const div = document.createElement('div');
+                div.className = 'bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-2xl flex flex-col h-full animate-in slide-in-from-bottom-4 duration-500';
+                
+                div.innerHTML = `
+                    <header class="p-8 bg-slate-50 border-b flex justify-between items-center">
+                        <div class="flex gap-6 items-center">
+                            <div class="w-24 h-24 rounded-3xl bg-indigo-600 text-white flex items-center justify-center text-4xl font-black shadow-2xl shadow-indigo-200">${client.name.charAt(0)}</div>
+                            <div>
+                                <h2 class="text-3xl font-black text-slate-800 tracking-tight">${client.name}</h2>
+                                <div class="flex flex-wrap gap-4 mt-2">
+                                   <span class="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-white border px-3 py-1 rounded-full"><i data-lucide="mail" class="w-3 h-3 text-indigo-500"></i> ${client.email}</span>
+                                   <span class="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-white border px-3 py-1 rounded-full"><i data-lucide="phone" class="w-3 h-3 text-indigo-500"></i> ${client.phone}</span>
+                                   <span class="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">${client.status}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="ui.deleteClient('${id}')" class="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                                <i data-lucide="trash-2" class="w-6 h-6"></i>
+                            </button>
+                            <button onclick="router.navigate('directory')" class="p-2.5 text-slate-400 hover:bg-slate-200 rounded-xl transition-all">
+                                <i data-lucide="x" class="w-6 h-6"></i>
+                            </button>
+                        </div>
+                    </header>
+                    <div class="flex-1 flex overflow-hidden">
+                        <aside class="w-64 border-r p-6 space-y-2 bg-slate-50/30">
+                            ${this.detailNav('overview', 'Core Information', 'users')}
+                            ${this.detailNav('kyc', 'Compliance (KYC)', 'shield-check')}
+                            ${this.detailNav('docs', 'File Repository', 'file-text')}
+                            ${this.detailNav('logs', 'Interaction Log', 'history')}
+                            ${this.detailNav('billing', 'Billing Ledger', 'credit-card')}
+                        </aside>
+                        <div class="flex-1 overflow-y-auto p-12 custom-scrollbar" id="detailPanel">
+                            ${this.renderDetailPanel(client)}
+                        </div>
+                    </div>
+                `;
+                return div;
+            },
+            detailNav(tab, label, icon) {
+                const active = state.viewingTab === tab;
+                return `
+                    <button onclick="ui.setDetailTab('${tab}')" class="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-[10px] font-black transition-all uppercase tracking-[0.15em] ${active ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'text-slate-400 hover:text-slate-900 hover:bg-white/50'}">
+                        <i data-lucide="${icon}" class="w-4 h-4"></i> ${label}
+                    </button>
+                `;
+            },
+            renderDetailPanel(client) {
+                switch(state.viewingTab) {
+                    case 'overview':
+                        return `
+                            <div class="grid grid-cols-2 gap-x-16 gap-y-10 max-w-4xl animate-in fade-in duration-300">
+                                ${this.detailField('FULL LEGAL NAME', client.name)}
+                                ${this.detailField('EMAIL ADDRESS', client.email)}
+                                ${this.detailField('PRIMARY PHONE', client.phone)}
+                                ${this.detailField('DATE OF BIRTH', client.dob || 'Not Provided')}
+                                <div class="col-span-2">
+                                    ${this.detailField('PERMANENT ADDRESS', client.address || 'Standard Indian Resident Address Provided on KYC Form.', true)}
+                                </div>
+                                ${this.detailField('RESIDING CITY', client.city)}
+                            </div>
+                        `;
+                    case 'kyc':
+                        return `
+                            <div class="grid grid-cols-2 gap-16 max-w-4xl animate-in fade-in duration-300">
+                                <div class="space-y-10">
+                                    <h4 class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-2 underline underline-offset-8 decoration-2">Identification</h4>
+                                    ${this.detailField('PAN CARD NUMBER', client.pan)}
+                                    ${this.detailField('AADHAR NUMBER', client.aadhar || 'XXXX XXXX 1234')}
+                                </div>
+                                <div class="space-y-10">
+                                    <h4 class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-2 underline underline-offset-8 decoration-2">Status</h4>
+                                    <div class="bg-emerald-50 text-emerald-700 px-4 py-3 rounded-2xl border border-emerald-100 flex items-center gap-3">
+                                       <i data-lucide="shield-check" class="w-5 h-5"></i>
+                                       <span class="text-xs font-black uppercase tracking-widest">KYC Verified & Compliant</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    case 'docs':
+                        const docs = client.docs || [
+                            { name: 'Signed_Agreement.pdf', size: '2.4 MB', date: 'Oct 12' },
+                            { name: 'PAN_Copy.jpg', size: '1.1 MB', date: 'Oct 12' }
+                        ];
+                        return `
+                            <div class="space-y-8 animate-in fade-in duration-300">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="font-black text-2xl text-slate-800">Files</h3>
+                                    <button class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2">Upload</button>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    ${docs.map(d => `
+                                        <div class="p-5 border border-slate-100 bg-slate-50 rounded-2xl flex items-center justify-between group hover:bg-white hover:shadow-md transition-all">
+                                            <div class="flex items-center gap-4">
+                                                <div class="p-4 bg-white rounded-2xl text-indigo-600 shadow-sm transition-all"><i data-lucide="file-text" class="w-5 h-5"></i></div>
+                                                <div><p class="text-sm font-black text-slate-800">${d.name}</p><p class="text-[10px] text-slate-400 uppercase font-black">${d.size} • ${d.date}</p></div>
+                                            </div>
+                                            <i data-lucide="download" class="w-4 h-4 text-slate-300"></i>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    case 'logs':
+                        const logs = client.logs || [
+                            { title: 'Annual Review Call', desc: 'Discussed portfolio performance for 2024. Client satisfied with returns.', date: 'Dec 15, 2024' },
+                            { title: 'KYC Document Collection', desc: 'Address proof verified via utility bill.', date: 'Oct 02, 2024' }
+                        ];
+                        return `
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 max-w-6xl animate-in fade-in duration-300">
+                                <div class="space-y-6">
+                                    <div class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
+                                        <p class="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em]">Log Interaction</p>
+                                        <input class="w-full bg-slate-50 border border-slate-100 rounded-xl px-5 py-3 text-sm font-bold outline-none" placeholder="Title">
+                                        <textarea class="w-full bg-slate-50 border border-slate-100 rounded-xl px-5 py-3 text-sm h-32 outline-none" placeholder="Notes..."></textarea>
+                                        <button class="w-full bg-indigo-600 text-white py-4 rounded-xl text-sm font-black">SAVE TO HISTORY</button>
+                                    </div>
+                                </div>
+                                <div class="space-y-10 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100 pr-4">
+                                    ${logs.map(log => `
+                                        <div class="relative pl-12 group">
+                                            <div class="absolute left-0 top-1 w-6 h-6 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-slate-300 z-10"><i data-lucide="history" class="w-3 h-3"></i></div>
+                                            <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                                                <p class="text-[10px] font-black text-slate-300 uppercase mb-2">${log.date}</p>
+                                                <h5 class="text-sm font-black text-slate-800 uppercase mb-2">${log.title}</h5>
+                                                <p class="text-xs text-slate-500 leading-relaxed">${log.desc}</p>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    case 'billing':
+                        return `
+                            <div class="space-y-12 max-w-4xl animate-in fade-in duration-300">
+                                <div class="grid grid-cols-3 gap-8">
+                                    <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">${this.detailField('ANNUAL BILLING (₹)', '₹' + (client.billingAmount || 0).toLocaleString())}</div>
+                                    <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">${this.detailField('NEXT REVIEW', client.nextMeeting || 'Jan 20, 2026')}</div>
+                                    <div class="bg-emerald-600 p-8 rounded-3xl text-white shadow-xl shadow-emerald-100">
+                                        <label class="text-[10px] font-black text-emerald-200 uppercase tracking-widest">STATUS</label>
+                                        <p class="text-2xl font-black mt-2 flex items-center gap-2"><i data-lucide="check-circle" class="w-6 h-6"></i> CURRENT</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                }
+            },
+            detailField(label, value, isTextArea = false) {
+                return `
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">${label}</label>
+                        <p class="text-sm font-black text-slate-800 leading-relaxed tracking-tight">${value}</p>
+                    </div>
+                `;
+            },
+            settings() {
+                const div = document.createElement('div');
+                div.className = 'bg-white p-10 rounded-[2.5rem] border border-slate-200 max-w-2xl mx-auto space-y-8 shadow-sm animate-in zoom-in-95 duration-300';
+                div.innerHTML = `
+                    <div class="flex items-center gap-4 text-indigo-600">
+                        <i data-lucide="database" class="bg-indigo-50 p-3 rounded-2xl w-12 h-12"></i>
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800">Demo Environment</h2>
+                            <p class="text-sm text-slate-400">Manage testing data for client presentation</p>
+                        </div>
+                    </div>
+                    <div class="p-8 bg-slate-50 rounded-3xl border border-slate-200">
+                        <h3 class="font-black text-slate-800 mb-2">Seed 100 Clients</h3>
+                        <p class="text-sm text-slate-500 mb-8 leading-relaxed">
+                            Inject 100 high-fidelity Indian client records into this session. 
+                            Includes randomized <span class="font-bold text-indigo-600">PAN, phone numbers, and billing history</span>.
+                        </p>
+                        <button onclick="ui.seedData()" id="seedBtn" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3">
+                            <i data-lucide="zap" class="w-5 h-5"></i>
+                            Generate Full Test Set
+                        </button>
+                        <p class="text-[10px] text-center text-slate-400 mt-4 uppercase tracking-widest font-bold">Resets existing demo data</p>
+                    </div>
+                `;
+                return div;
+            }
+        };
+
+        // --- UI Interactions ---
+        const ui = {
+            toggleModal(id, show) {
+                const modal = document.getElementById(id);
+                if (show) modal.classList.remove('hidden');
+                else modal.classList.add('hidden');
+            },
+            handleSearch(val) {
+                state.searchQuery = val;
+                if (state.activeTab === 'directory') router.render();
+            },
+            setDetailTab(tab) {
+                state.viewingTab = tab;
+                router.render();
+            },
+            showToast(msg) {
+                const toast = document.getElementById('toast');
+                const toastMsg = document.getElementById('toastMessage');
+                toastMsg.textContent = msg;
+                toast.classList.remove('translate-y-20');
+                setTimeout(() => toast.classList.add('translate-y-20'), 3000);
+            },
+            submitNewClient(e) {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const newClient = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    name: formData.get('name'),
+                    email: formData.get('email'),
+                    phone: formData.get('phone'),
+                    pan: formData.get('pan'),
+                    city: formData.get('city'),
+                    billingAmount: 75000,
+                    status: 'Active',
+                    createdAt: new Date().toISOString()
+                };
+                state.clients.unshift(newClient);
+                this.toggleModal('addClientModal', false);
+                e.target.reset();
+                this.showToast('Client added successfully');
+                router.navigate('directory');
+            },
+            deleteClient(id) {
+                if (confirm('Permanently delete this record?')) {
+                    state.clients = state.clients.filter(c => c.id !== id);
+                    this.showToast('Client removed');
+                    router.navigate('directory');
+                }
+            },
+            seedData() {
+                const btn = document.getElementById('seedBtn');
+                btn.disabled = true;
+                btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Seeding...`;
+                
+                // Helper data
+                const fNames = ["Aarav", "Vivian", "Aditya", "Vihaan", "Arjun", "Sai", "Ishaan", "Ayaan", "Krishna", "Ananya", "Diya", "Pari", "Myra", "Saanvi"];
+                const lNames = ["Sharma", "Verma", "Gupta", "Malhotra", "Kapoor", "Khan", "Reddy", "Patel", "Mehta", "Iyer"];
+                const cities = ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Ahmedabad", "Chennai", "Pune"];
+                
+                setTimeout(() => {
+                    const newSet = [];
+                    for(let i=0; i<100; i++) {
+                        const fn = fNames[Math.floor(Math.random()*fNames.length)];
+                        const ln = lNames[Math.floor(Math.random()*lNames.length)];
+                        newSet.push({
+                            id: 'cl-' + i,
+                            name: `${fn} ${ln}`,
+                            email: `${fn.toLowerCase()}.${ln.toLowerCase()}@example.com`,
+                            phone: `+91 ${Math.floor(9000000000 + Math.random()*999999999)}`,
+                            pan: `${String.fromCharCode(65+Math.random()*26)}${String.fromCharCode(65+Math.random()*26)}${String.fromCharCode(65+Math.random()*26)}P${String.fromCharCode(65+Math.random()*26)}${Math.floor(1000+Math.random()*8999)}${String.fromCharCode(65+Math.random()*26)}`,
+                            city: cities[Math.floor(Math.random()*cities.length)],
+                            billingAmount: Math.floor(25000 + Math.random()*150000),
+                            status: Math.random() > 0.1 ? 'Active' : 'Inactive',
+                            nextMeeting: 'Jan ' + (Math.floor(Math.random()*28)+1) + ', 2026'
+                        });
+                    }
+                    state.clients = newSet;
+                    this.showToast('100 demo clients generated');
+                    router.navigate('directory');
+                }, 1000);
+            }
+        };
+
+        // --- Init ---
+        window.onload = () => {
+            // Initial data
+            state.clients = [
+                { id: '1', name: 'Vikram Singh', email: 'vikram@example.com', phone: '+91 98765 43210', pan: 'ABCDE1234F', city: 'Mumbai', billingAmount: 125000, status: 'Active', nextMeeting: 'Jan 15, 2026' },
+                { id: '2', name: 'Ananya Iyer', email: 'ananya.i@corp.net', phone: '+91 88888 77777', pan: 'FGHIJ5678K', city: 'Chennai', billingAmount: 45000, status: 'Active', nextMeeting: 'Feb 02, 2026' }
+            ];
+            router.navigate('dashboard');
+        };
+    </script>
+</body>
+</html>
