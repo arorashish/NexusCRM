@@ -264,17 +264,48 @@
                 text.textContent = step.text;
                 
                 guide.classList.remove('hidden');
+                
+                // --- Responsive Positioning Logic ---
+                const rect = targetEl.getBoundingClientRect();
+                const margin = 20;
+                const guideWidth = 320; // from CSS w-80
+                const guideHeight = 220; // approximate
+                
+                let top, left;
+
+                if (step.pos === 'right') {
+                    top = rect.top;
+                    left = rect.right + margin;
+                    
+                    // Flip to left if it overflows window width
+                    if (left + guideWidth > window.innerWidth) {
+                        left = rect.left - guideWidth - margin;
+                    }
+                } else if (step.pos === 'bottom') {
+                    top = rect.bottom + margin;
+                    left = rect.left;
+                    
+                    // Adjust left if overflowing width
+                    if (left + guideWidth > window.innerWidth) {
+                        left = window.innerWidth - guideWidth - margin;
+                    }
+                    
+                    // Flip to top if it overflows window height
+                    if (top + guideHeight > window.innerHeight) {
+                        top = rect.top - guideHeight - margin;
+                    }
+                }
+
+                // Boundary Guardrails
+                if (left < margin) left = margin;
+                if (top < margin) top = margin;
+                if (top + guideHeight > window.innerHeight) top = window.innerHeight - guideHeight - margin;
+
+                guide.style.top = top + 'px';
+                guide.style.left = left + 'px';
+                
                 setTimeout(() => guide.classList.add('scale-100'), 50);
 
-                const rect = targetEl.getBoundingClientRect();
-                if (step.pos === 'right') {
-                    guide.style.top = rect.top + 'px';
-                    guide.style.left = (rect.right + 20) + 'px';
-                } else if (step.pos === 'bottom') {
-                    guide.style.top = (rect.bottom + 20) + 'px';
-                    guide.style.left = rect.left + 'px';
-                }
-                
                 document.getElementById('tour-prev').classList.toggle('invisible', this.step === 0);
                 document.getElementById('tour-next').textContent = (this.step === this.steps.length - 1) ? 'Finish' : 'Next';
             }
@@ -286,11 +317,6 @@
                 state.activeTab = view;
                 state.selectedClientId = clientId;
                 
-                // Reset search logic if navigating away manually
-                if (!clientId && state.searchQuery === '') {
-                    // Do nothing
-                }
-
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('tab-active'));
                 const activeNav = document.getElementById(`nav-${view}`);
                 if (activeNav) activeNav.classList.add('tab-active');
@@ -335,7 +361,7 @@
                             <h3 class="font-black text-xl text-slate-800 mb-8">Recently Active Clients</h3>
                             <div class="space-y-2">
                                 ${state.clients.slice(0, 5).map(c => `
-                                    <div onclick="router.navigate('directory', '${c.id}')" class="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer group">
+                                    <div onclick="router.navigate('directory', '${c.id}')" class="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer group border border-transparent hover:border-slate-100">
                                         <div class="flex items-center gap-4">
                                             <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-sm font-black text-slate-500 group-hover:bg-indigo-600 group-hover:text-white transition-all">${c.name.charAt(0)}</div>
                                             <div><p class="text-sm font-black text-slate-800">${c.name}</p><p class="text-xs text-slate-400 font-medium">${c.city}</p></div>
